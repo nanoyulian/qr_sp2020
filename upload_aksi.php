@@ -2,8 +2,18 @@
 include "SimpleXLSX.php";
 require_once("fpdf182/fpdf.php");
 
+//direktory tempat menyimpan hasil generate qrcode jika folder belum dibuat maka secara otomatis akan membuat terlebih dahulu
+$tempdir = "temp/"; 
+if (!file_exists($tempdir))
+    mkdir($tempdir);
+    
+$temp = explode(".", $_FILES["filepegawai"]["name"]);
+$newfilename = str_replace(' ','_',$_POST['txt_wilayah']).'-'.round(microtime(true)). '.' . end($temp);
+move_uploaded_file($_FILES["filepegawai"]["tmp_name"], "./temp/" . $newfilename);
+
 // beri permisi agar file xls dapat di baca
-chmod($_FILES['filepegawai']['name'],0777);
+chmod("./temp/" . $newfilename,0777);
+
 //Isi dari QRCode Saat discan
 $wil = preg_replace('/\s+/', '%20', $_POST['txt_wilayah']);
 $organisasi = "Badan%20Pusat%20Statistik%20".$wil;
@@ -12,7 +22,7 @@ $pdf = new FPDF('P','mm','A4');
 $pdf->SetFont('Arial','',8);
 $pdf->AddPage();
 //baca file import
-if ( $xlsx = SimpleXLSX::parse($_FILES['filepegawai']['name']) ) {
+if ( $xlsx = SimpleXLSX::parse('./temp/'.$newfilename) ) {
     $i = 0;
     $x_pos = 10;
     $y_pos = 10;
@@ -27,6 +37,7 @@ if ( $xlsx = SimpleXLSX::parse($_FILES['filepegawai']['name']) ) {
           else {                     
                 //Isi Teks dalam QRCode           
                 $nama_lengkap = preg_replace('/\s+/', '%20', $kol[1]);
+                $tlp = preg_replace('/\s+/', '%20', $kol[4]);
                 // jenis mitra (koseka/PS)
                 //print_r($kol[3]);
                 $jns_mitra = $kol[3]; 
@@ -37,7 +48,7 @@ if ( $xlsx = SimpleXLSX::parse($_FILES['filepegawai']['name']) ) {
                 $isi_teks .= 'Nama%20:%20'.$nama_lengkap.'%0A';
                 $isi_teks .= 'Email%20:%20'.$kol[2].'%0A';   
                 $isi_teks .= 'Tugas%20:%20'.$jns_mitra.'%0A';   
-                $isi_teks .= 'Tlp/HP%20:%20'.$kol[4].'%0A'; 
+                $isi_teks .= 'Tlp/HP%20:%20'.$tlp.'%0A'; 
                 $isi_teks .=  $organisasi;  
                 //gen.qr code
                 $pdf->Image("http://localhost/qrcode/qr_generator.php?code=".$isi_teks, $x_pos, $y_pos, 30, 30, "png");  
